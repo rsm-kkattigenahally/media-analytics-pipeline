@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  ingestion:
+    build: ./ingestion
+    container_name: media_analyzer_ingestion
+    env_file: .env
+    volumes:
+      - ./data:/data
+      - ./spotify_cache:/root/.cache
+      - ./ingestion:/app
+
+  transform:
+    build: ./transform
+    container_name: media_analyzer_transofrm
+    env_file: .env
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - S3_BUCKET=${S3_BUCKET_NAME}
