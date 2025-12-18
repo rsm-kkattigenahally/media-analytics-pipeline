@@ -13,14 +13,14 @@ services:
 
   webserver:
     build:
-      context: .      # Build custom Airflow image
+      context: .      
     depends_on:
       - postgres
-    env_file: .env               # Loads Spotify + AWS creds into Airflow
+    env_file: .env              
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__FERNET_KEY: "9loxgU8EDJnbTjWiXKcXJLmJeBMrAn6ZNI63mh60ILg="
+      #AIRFLOW__CORE__FERNET_KEY: IMPORTANT Add your key and uncomment this
       AIRFLOW__WEBSERVER__SECRET_KEY: "mediaanalyzer123"
     volumes:
       - ./airflow/dags:/opt/airflow/dags
