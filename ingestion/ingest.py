@@ -31,8 +31,8 @@ def main():
     # spotify client
     sp = get_spotify_client()
     
-    # fetch last 50 played tracks
-    results = sp.current_user_recently_played(limit=50)
+    
+    results = sp.current_user_recently_played()
     #local_path = LOCAL_DIR / filename
     filename = f"spotify_recently_played_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     #out_path = DIR / filename

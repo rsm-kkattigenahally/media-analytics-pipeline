@@ -1,20 +1,67 @@
 version: '3.8'
-services:
-  ingestion:
-    build: ./ingestion
-    container_name: media_analyzer_ingestion
-    env_file: .env
-    volumes:
-      - ./data:/data
-      - ./spotify_cache:/root/.cache
-      - ./ingestion:/app
 
-  transform:
-    build: ./transform
-    container_name: media_analyzer_transofrm
-    env_file: .env
+services:
+  postgres:
+    image: postgres:13
     environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
-      - S3_BUCKET=${S3_BUCKET_NAME}
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_db:/var/lib/postgresql/data
+
+
+  webserver:
+    build:
+      context: .      # Build custom Airflow image
+    depends_on:
+      - postgres
+    env_file: .env               # Loads Spotify + AWS creds into Airflow
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: "myFernetKey"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "mediaanalyzer123"
+      AIRFLOW_CONN_SNOWFLAKE_CONN: snowflake://username:password@/SCHEMA?account=myaccount&database=MYDB&region=us-west-2&warehouse=MyWarehouse
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+
+      # REQUIRED — so your DAG can import ingest.py and clean_spotify.py
+      - ./ingestion:/opt/airflow/ingestion
+      - ./transform:/opt/airflow/transform
+      - ./spotify_cache:/opt/airflow/spotify_cache
+
+
+    ports:
+      - "8080:8080"
+    command: airflow webserver
+
+
+  scheduler:
+    build:
+      context: .        # same custom Airflow image
+    depends_on:
+      - webserver
+      - postgres
+    env_file: .env               # Load .env for PythonOperator
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: "myFernetKey"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "mediaanalyzer123"
+      AIRFLOW_CONN_SNOWFLAKE_CONN: snowflake://username:password@/SCHEMA?account=myaccount&database=MYDB&region=us-west-2&warehouse=MyWarehouse
+      
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+
+      # REQUIRED — scheduler executes PythonOperators
+      - ./ingestion:/opt/airflow/ingestion
+      - ./transform:/opt/airflow/transform
+      - ./spotify_cache:/opt/airflow/spotify_cache
+    command: airflow scheduler
+
+
+volumes:
+  airflow_db:
